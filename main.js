@@ -19,49 +19,126 @@ let canvas = null, context = null;
 let s = null;
 let good_bases = [];
 let bad_bases = [];
-let groups = []; // attack groups
 let g = { 
     state : G_STATE_IDLE,
     base : null
 }
 
-class AttackGroup {
-    constructor(base,target,count) {
-        this.base = base;
-        this.target = target;
-        this.count = count;
-        this.spr = new kontra.Sprite({
-            x:this.base.spr.x,
-            y:this.base.spr.y,
-            image:kontra.imageAssets["ag"]
-        });
+class AGContainer {
+    constructor() {
+        this.groups = [];
+        this.index = 0;
     }
-    // easing
-    // how much Time, Begin point, Change = end-beging,
-    // Duration - how much time has passed now?
-    linear(t,b,c,d) {
-        return c * t / d + b
+    add(tmp) {
+        this.groups[this.index] = tmp;
+        // update the index on the group
+        tmp.index = this.index;
+        this.index++;
     }
     update(dt) {
-        // move towards target?
-        
-        if (this.target.spr.x>this.base.spr.x) {
-            this.spr.x = this.spr.x + 1;
-        } else if (this.target.spr.x===this.base.spr.x) {
-        } else {
-            this.spr.x = this.spr.x - 1;
+        let tmp=null;
+        for(tmp in this.groups) {
+            this.groups[tmp].update(dt)
         }
-        if (this.target.spr.y>this.base.spr.y) {
-            this.spr.y = this.spr.y + 1;
-        } else if (this.target.spr.y===this.base.spr.y){
-
-        } else  {
-            this.spr.y = this.spr.y - 1;
-        }
-        this.spr.update();
     }
     render() {
-        this.spr.render();
+        let tmp = null;
+        for (tmp in this.groups) {
+            this.groups[tmp].render();
+        }
+    }
+}
+let groups = new AGContainer();
+
+
+class AttackGroup {
+    constructor(base,target,count) {
+        this.b = base;
+        this.t = target;
+        this.origin = {
+            x:base.spr.x,
+            y:base.spr.y
+        };
+        this.target = {
+            x:target.spr.x,
+            y:target.spr.y
+        }
+        this.count = count;
+        this.arrived_x = false;
+        this.arrived_y = false;
+        this.dead = false;
+        this.index = -1; // gets set external
+        this.spr = new kontra.Sprite({
+            x:this.origin.x,
+            y:this.origin.y,
+            image:kontra.imageAssets["ag"]
+        });
+        this.txt = kontra.Text({
+            text: this.count,
+            x:this.spr.x+16,y:this.spr.y+16,anchor:{x:0.5,y:0.5},
+            textAlign: 'center',
+            color:'white'
+        })
+    }
+   
+    update(dt) {
+        if (this.dead) {
+
+            // splice us out of the array
+            if (this.index!=-1) {
+                console.log("removing group");
+                delete groups.groups[this.index];
+                this.index=-1;
+            }
+
+            return;
+        }
+
+        if (!this.arrived_x) {
+            if (this.spr.x<this.target.x) {
+                this.spr.x++
+                this.txt.x++;
+            } else if (this.spr.x>this.target.x) {
+                this.spr.x--;
+                this.txt.x--;
+            } else if (this.spr.x===this.target.x) {
+                this.arrived_x = true;
+            }    
+        }
+        if (!this.arrived_y) {
+            if (this.spr.y<this.target.y) {
+                this.spr.y++;
+                this.txt.y++
+            } else if (this.spr.y>this.target.y) {
+                this.spr.y--;
+                this.txt.y--;
+            } else if (this.spr.y===this.target.y) {
+                this.arrived_y = true;
+            }    
+        }
+        if (this.arrived_x && this.arrived_y) {
+            // ATTTTTACK NOW
+            this.t.count -= this.count;
+
+            // TODO:
+            // if the target went below 0
+            // need to change the color
+            // HOW TO DO THIS
+
+            // mark the group dead
+            // not sure how these get reclaimed yet
+            this.dead = true;
+        }
+
+        // move the sprite
+        this.spr.update();
+        this.txt.update();
+    }
+    render() {
+        if (!this.dead) { 
+            this.spr.render();
+            this.txt.render();
+        }
     }
 }
 
@@ -141,7 +218,7 @@ class Base {
                 // 1. create an attack group
                 let tmp = new AttackGroup(g.base,this,g.base.count);
                 g.base.count = 0;
-                groups.push(tmp);
+                groups.add(tmp);
 
                 console.log("made a group!",tmp.count);
                 g.base.unselect();
@@ -156,8 +233,8 @@ class Base {
 }
 
 function _init() {
-    good_bases.push(new Base(0,0,'blue',1));
-    good_bases.push(new Base(100,100,'blue',1));
+    good_bases.push(new Base(0,0,'blue',0.5));
+    good_bases.push(new Base(100,100,'blue',0.75));
     
     bad_bases.push(new Base(W-32,H-32,'red',1));
     bad_bases.push(new Base(W-164,H-164,'red',1));
@@ -224,9 +301,7 @@ function _main() {
             for(let i=0;i<bad_bases.length;i++) {
                 bad_bases[i].update(dt);
             }
-            for(let i=0;i<groups.length;i++) {
-                groups[i].update(dt);
-            }
+            groups.update(dt);
         },
         render: function() {
             for(let i=0;i<good_bases.length;i++) {
@@ -235,9 +310,7 @@ function _main() {
             for(let i=0;i<bad_bases.length;i++) {
                 bad_bases[i].render();
             }
-            for(let i=0;i<groups.length;i++) {
-                groups[i].render();
-            }
+            groups.render();
         }
     });
     loop.start();
