@@ -7,12 +7,16 @@ const STATE_MOVE = 2; // moving to a new base
 const STATE_DEAD = 3; // marked as dead
 const W = 600;
 const H = 400;
+const G_STATE_IDLE = 0;
+const G_STATE_BASE_SELECTED = 1;
 
 let init = null;
 let canvas = null, context = null;
 let s = null;
-let blue_base = null;
-let red_base = null;
+let good_bases = [];
+let bad_bases = [];
+let g_state = G_STATE_IDLE;
+let g_state_base = null; // currently selected base
 
 // state - hanging out at a base
 // moving - moving from one base to another
@@ -44,6 +48,7 @@ class Base {
         this.rate = rate;
         this.acc = 0;
         this.count = count ? count : 0;
+        this.selected = false;
 
         this.spr = kontra.Sprite({
             x:x,y:y,color:color,width:32,height:32
@@ -57,15 +62,27 @@ class Base {
     }
     sprite() { return this.spr; }
     update(dt) {
+        
+        // growth handling
         this.acc += dt;
         if (this.acc>this.rate) {
             this.count++;
             this.acc = 0;
             this.txt.text = this.count;
         }
-        if (kontra.pointerOver(this.spr)) {
-            // highlight base?
+
+        if (!this.selected) {
+            if (kontra.pointerOver(this.spr)) {
+                if (kontra.pointerPressed()) {
+
+                    this.selected = true;
+                    g_state = G_STATE_BASE_SELECTED;
+                    g_state_base = this;
+                    
+                }
+            }    
         }
+
         this.spr.update();
         this.txt.update();
     }
@@ -76,10 +93,20 @@ class Base {
 }
 
 function _init() {
-    // setup globals
-    s = new Fighter(100,100,'blue');
-    blue_base = new Base(0,0,'blue',1);
-    red_base = new Base(W-32,H-32,'red',1);
+    good_bases.push(new Base(0,0,'blue',1));
+    good_bases.push(new Base(100,100,'blue',1));
+    
+    bad_bases.push(new Base(W-32,H-32,'red',1));
+    bad_bases.push(new Base(W-164,H-164,'red',1));
+}
+
+function _setup_tracking() {
+    for (let i=0;i<good_bases.length;i++) {
+        kontra.track(good_bases[i].sprite());    
+    }
+    for (let i=0;i<bad_bases.length;i++) {
+        kontra.track(bad_bases[i].sprite());
+    }
 }
 
 function main() {
@@ -91,19 +118,25 @@ function main() {
     _init();
 
     kontra.initPointer();
-    kontra.track(blue_base.sprite());
-    kontra.track(red_base.sprite());
+    _setup_tracking();
+
 
     let loop = kontra.GameLoop({
         update: function(dt) {
-            s.update();
-            blue_base.update(dt);
-            red_base.update(dt);
+            for(let i=0;i<good_bases.length;i++) {
+                good_bases[i].update(dt);
+            }
+            for(let i=0;i<bad_bases.length;i++) {
+                bad_bases[i].update(dt);
+            }
         },
         render: function() {
-            s.render();
-            blue_base.render();
-            red_base.render();
+            for(let i=0;i<good_bases.length;i++) {
+                good_bases[i].render();
+            }
+            for(let i=0;i<bad_bases.length;i++) {
+                bad_bases[i].render();
+            }
         }
     });
     loop.start();
