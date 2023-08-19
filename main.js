@@ -37,6 +37,8 @@ class AGContainer {
     }
     update(dt) {
         let tmp=null;
+        // if you do not declare the variable in a ..in loop
+        // it is global javascript sucks
         for(tmp in this.groups) {
             this.groups[tmp].update(dt)
         }
@@ -120,10 +122,9 @@ class AttackGroup {
             // ATTTTTACK NOW
             this.t.count -= this.count;
 
-            // TODO:
-            // if the target went below 0
-            // need to change the color
-            // HOW TO DO THIS
+            if (this.t.count<0) {
+                this.t.set_new_color('blue');
+            }
 
             // mark the group dead
             // not sure how these get reclaimed yet
@@ -181,6 +182,15 @@ class Base {
     select() {
         if (this.color==='red') this.spr.image = kontra.imageAssets["rb_selected_32x32"];
         if (this.color==='blue') this.spr.image = kontra.imageAssets["bb_selected_32x32"];
+    }
+    set_new_color(color) {
+        if (color!==this.color) {
+            this.color = color;
+            if (this.color==='blue') this.spr.image = kontra.imageAssets["bb_32x32"];
+            if (this.color==='red') this.spr.image = kontra.imageAssets["rb_32x32"];
+            this.selected = false;
+            this.count = 0;
+        }
     }
     update(dt) {
         
