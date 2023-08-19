@@ -24,7 +24,7 @@ let g_state_base = null; // currently selected base
 class Fighter {
     constructor(x,y,color) {
         this.spr = kontra.Sprite({
-            x:x,y:y,color:color,width:8,height:8
+            x:x,y:y,width:8,height:8,color:color
         })
         this.health = 10; // ?
         this.state = STATE_HANG;
@@ -51,7 +51,15 @@ class Base {
         this.selected = false;
 
         this.spr = kontra.Sprite({
-            x:x,y:y,color:color,width:32,height:32
+            x:x,y:y,width:32,height:32,
+            image : color=='red' ? kontra.imageAssets["rb_32x32"] : 
+                kontra.imageAssets["bb_32x32"],
+            onOver : () => {
+                this.handle_onOver();
+            },
+            onDown : () => {
+                this.handle_onDown();
+            }
         });
         this.txt = kontra.Text({
             text: "0",
@@ -71,24 +79,23 @@ class Base {
             this.txt.text = this.count;
         }
 
-        if (!this.selected) {
-            if (kontra.pointerOver(this.spr)) {
-                if (kontra.pointerPressed()) {
-
-                    this.selected = true;
-                    g_state = G_STATE_BASE_SELECTED;
-                    g_state_base = this;
-                    
-                }
-            }    
-        }
-
         this.spr.update();
         this.txt.update();
     }
     render() {
         this.spr.render();
         this.txt.render();
+    }
+    handle_onDown() {
+        this.selected = true;
+        this.spr.image = this.color==='red' ?
+        kontra.imageAssets["rb_selected_32x32"] :
+        kontra.imageAssets["bb_selected_32x32"];
+        g_state = G_STATE_BASE_SELECTED;
+        g_state_base = this;
+    }
+    handle_onOver() {
+
     }
 }
 
@@ -109,7 +116,7 @@ function _setup_tracking() {
     }
 }
 
-function main() {
+function _main() {
     // js syntax is ass
     ({init} = kontra);
     ({canvas,context} = init())
@@ -140,6 +147,23 @@ function main() {
         }
     });
     loop.start();
+}
+
+function main() {
+    kontra.load(
+        "rb_32x32.png",
+        "rb_selected_32x32.png",
+        "bb_32x32.png",
+        "bb_selected_32x32.png",
+        "windmill.png")
+    .then(function(assets) {
+        // g_assets = assets;
+        //console.log("g_assets",g_assets)
+        _main();
+    })
+    .catch(function(err){
+        console.log(err);
+    })
 }
 
 window.onload = main;
