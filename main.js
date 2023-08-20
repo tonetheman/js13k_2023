@@ -14,15 +14,30 @@ const G_STATE_IDLE = 0;
 // player selected a base
 const G_STATE_BASE_SELECTED = 1;
 
+// game over states
+const G_STATE_RED_WON = 2;
+const G_STATE_BLUE_WON = 3;
+
 let init = null;
 let canvas = null, context = null;
 let s = null;
-let good_bases = [];
-let bad_bases = [];
+let bases = [];
 let g = { 
     state : G_STATE_IDLE,
     base : null
 }
+let level = {
+    total_bases: 6,
+    red_base_count: 3,
+    blue_base_count: 3,
+}
+
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/random
+function getRandomInt(min, max) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min) + min); // The maximum is exclusive and the minimum is inclusive
+  }
 
 class AGContainer {
     constructor() {
@@ -31,8 +46,11 @@ class AGContainer {
     }
     add(tmp) {
         this.groups[this.index] = tmp;
+
         // update the index on the group
-        tmp.index = this.index;
+        // needed so we can delete easily
+        tmp.set_index(this.index);
+
         this.index++;
     }
     update(dt) {
@@ -51,7 +69,6 @@ class AGContainer {
     }
 }
 let groups = new AGContainer();
-
 
 class AttackGroup {
     constructor(base,target,count) {
@@ -82,11 +99,13 @@ class AttackGroup {
             color:'white'
         })
     }
-   
+    set_index(val) {
+        this.index = val;
+    }
     update(dt) {
         if (this.dead) {
 
-            // splice us out of the array
+            // delete us out of the array
             if (this.index!=-1) {
                 console.log("removing group");
                 delete groups.groups[this.index];
@@ -242,53 +261,87 @@ class Base {
     }
 }
 
+function check_for_game_over() {
+    let rcount = 0;
+    let bcount = 0;
+    for(let i=0;i<bases.length;i++) {
+        if (bases[i].color==='red') {
+            rcount++;
+        }
+        if (bases[i].color==='blue') {
+            bcount++;
+        }
+    }
+    if (rcount===level.total_bases) {
+        // RED WON
+        g.state = G_STATE_RED_WON;
+    }
+    if (rcount===level.total_bases) {
+        // BLUE WON
+        g.state = G_STATE_BLUE_WON;
+    }
+}
+
 function _init() {
-    good_bases.push(new Base(0,0,'blue',0.5));
-    good_bases.push(new Base(100,100,'blue',0.75));
-    
-    bad_bases.push(new Base(W-32,H-32,'red',1));
-    bad_bases.push(new Base(W-164,H-164,'red',1));
+    // generate bases for blue
+    for (let i=0;i<level.blue_base_count;i++) {
+        let starting_count = getRandomInt(20);
+        let x = getRandomInt(0+32,W-32)
+        let y = getRandomInt(0+32,H-32);
+        bases.push(new Base(x,y,'blue',0.5,starting_count));
+    }
+    // generate bases for red
+    for (let i=0;i<level.red_base_count;i++) {
+        let starting_count = getRandomInt(20);
+        let x = getRandomInt(0,W)
+        let y = getRandomInt(0,H);
+        bases.push(new Base(x,y,'red',0.5,starting_count));
+    }
 }
 
 function global_onDown() {
 
     // make sure we are not already
     // handling this event in the sprite
-    for(let i=0;i<bad_bases.length;i++) {
-        if (kontra.pointerOver(bad_bases[i].sprite())) {
-            return;
-        }
-    }
-    for(let i=0;i<good_bases.length;i++) {
-        if (kontra.pointerOver(good_bases[i].sprite())) {
+    for(let i=0;i<bases.length;i++) {
+        if (kontra.pointerOver(bases[i].sprite())) {
             return;
         }
     }
 
     // back to idle
     g.state = G_STATE_IDLE;
+
+
     // fix the image
-    g.base.spr.image = g.base.color==='red' ?
-    kontra.imageAssets["rb_32x32"] :
-    kontra.imageAssets["bb_32x32"];
-    // forget the selected base
-    g.base = null;
+    if (g.base) {
+        g.base.spr.image = g.base.color==='red' ?
+        kontra.imageAssets["rb_32x32"] :
+        kontra.imageAssets["bb_32x32"];
+        // forget the selected base
+        g.base = null;    
+    }
 }
 
 function _setup_tracking() {
 
     // let each sprite handle its own tracking
-    for (let i=0;i<good_bases.length;i++) {
-        kontra.track(good_bases[i].sprite());    
-    }
-    for (let i=0;i<bad_bases.length;i++) {
-        kontra.track(bad_bases[i].sprite());
+    for (let i=0;i<bases.length;i++) {
+        kontra.track(bases[i].sprite());    
     }
 
     // setup one handler for global events
     kontra.onPointer("down",()=>{
         global_onDown();
     })
+}
+
+function update_game_over_menu () {
+
+}
+
+function render_game_over_menu () {
+
 }
 
 function _main() {
@@ -302,23 +355,32 @@ function _main() {
     kontra.initPointer();
     _setup_tracking();
 
-
     let loop = kontra.GameLoop({
         update: function(dt) {
-            for(let i=0;i<good_bases.length;i++) {
-                good_bases[i].update(dt);
+            check_for_game_over();
+            if ((g.state===G_STATE_BLUE_WON) || (g.state===G_STATE_BLUE_WON)) {
+                update_game_over_menu();
+                return;
             }
-            for(let i=0;i<bad_bases.length;i++) {
-                bad_bases[i].update(dt);
+
+            if ((g.state===G_STATE_BLUE_WON) || (g.state===G_STATE_BLUE_WON)) {
+                update_game_over_menu();
+                return;
+            }
+
+            for(let i=0;i<bases.length;i++) {
+                bases[i].update(dt);
             }
             groups.update(dt);
         },
         render: function() {
-            for(let i=0;i<good_bases.length;i++) {
-                good_bases[i].render();
+            if ((g.state===G_STATE_BLUE_WON) || (g.state===G_STATE_BLUE_WON)) {
+                render_game_over_menu();
+                return;
             }
-            for(let i=0;i<bad_bases.length;i++) {
-                bad_bases[i].render();
+
+            for(let i=0;i<bases.length;i++) {
+                bases[i].render();
             }
             groups.render();
         }
