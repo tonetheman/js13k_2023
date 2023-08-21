@@ -3,80 +3,12 @@
 import kontra from "./node_modules/kontra/kontra.min.mjs";
 
 import { GameScene } from "./gamescene.js";
+import { SM } from "./sm.js";
+import { LoadingScene } from "./loading_scene.js";
+
 
 let init = null;
 let canvas = null, context = null;
-
-
-
-
-
-
-function update_game_over_menu () {
-
-}
-
-function render_game_over_menu () {
-
-}
-
-class SM {
-    constructor(opts) {
-        this.scenes = {};
-        this.current_scene = null;
-    }
-    register(scene,instance) {
-        this.scenes[scene] = instance;
-    }
-    set_scene(scene) {
-        this.current_scene = scene;
-    }
-    init_current_scene() {
-        if (this.current_scene) {
-            this.scenes[this.current_scene].init();
-        }
-    }
-    unload_current_scene() {
-        if (this.current_scene) {
-            this.scenes[this.current_scene].unload();
-            this.current_scene = null;
-        }
-    }
-    update(dt) {
-        if (this.current_scene) {
-            this.scenes[this.current_scene].update(dt)
-        }
-    }
-    render() {
-        if (this.current_scene) {
-            this.scenes[this.current_scene].render();
-        }
-    }
-}
-
-class LoadingScene {
-    constructor(sm) {
-        this.sm = sm; // scene mananger
-        this.counter = 0;
-        this.txt = kontra.Text({
-            text: "loading..."
-        });
-    }
-    init() {
-
-    }
-    unload() {
-
-    }
-    update(dt) {
-        this.txt.update(dt);
-        this.counter++;
-    }
-    render() {
-        this.txt.render();
-    }
-}
-
 
 function _main() {
     // js syntax is ass
@@ -84,12 +16,10 @@ function _main() {
     ({canvas,context} = init())
     kontra.initPointer();
 
-    let sm = new SM({starting_scene:"loading"});
+    let sm = new SM();
     sm.register("loading", new LoadingScene(sm));
     sm.register("game", new GameScene(sm))
-    sm.set_scene("game");
-    sm.init_current_scene();
-
+    sm.switch_scene("loading");
 
     let loop = kontra.GameLoop({
         update: function(dt) {

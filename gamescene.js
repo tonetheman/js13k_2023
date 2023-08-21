@@ -3,12 +3,11 @@ import kontra from "./node_modules/kontra/kontra.min.mjs";
 
 // attack group container
 import { AGContainer } from "./agcontainer.js";
+import {W,H} from "./config.js";
 
 const STATE_HANG = 1; // hanging out at a base
 const STATE_MOVE = 2; // moving to a new base
 const STATE_DEAD = 3; // marked as dead
-const W = 600;
-const H = 400;
 
 // nothing happening
 const G_STATE_IDLE = 0;
@@ -100,6 +99,7 @@ class AttackGroup {
 
             if (this.t.count<0) {
                 this.t.set_new_color('blue');
+                this.t.count = Math.abs(this.t.count);
             }
 
             // mark the group dead
